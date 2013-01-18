@@ -1,20 +1,20 @@
+# Basic java example of initiating a SAML authentication flow and consuming the resulting assertion.
 
-Basic java example of initiating a SAML authentication flow and consuming the resulting assertion.
 
-=======================
-BUILD / INSTALL / SETUP
-=======================
+## Requirements
 
-1) You must have Maven 3 installed (Maven 2 might work, it's untested)
+Maven 3
 
-2) You need the DNS name demopartner.example.junyo.com to resolve to localhost.
+/etc/hosts edited to have your return url to resolve to localhost
 
-3) You need to run this on port 8080.
+## Install
 
-4) Run
+mvn clean install
+mvn eclipse:eclipse
 
-    mvn jetty:run
+Edit the file src/main/webapp/index.jsp, line 10 and put your SID
 
-Which should start up the web server. The test page should then be available at
+## Run
 
-http://demopartner.example.junyo.com:8080/java-saml/
+	mvn jetty:run
+	http://your_address:8080/java-saml
