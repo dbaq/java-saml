@@ -9,8 +9,8 @@ Maven 3
 
 ## Install
 
-mvn clean install
-mvn eclipse:eclipse
+	mvn clean install
+	mvn eclipse:eclipse
 
 Edit the file src/main/webapp/index.jsp, line 10 and put your SID
 
