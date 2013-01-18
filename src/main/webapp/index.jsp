@@ -1,41 +1,26 @@
-<%@page import="java.net.URLEncoder,java.net.URLDecoder,org.apache.log4j.Logger"%>
+<%@page import="java.util.Date,org.apache.log4j.Logger,org.apache.commons.lang.*"%>
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
 <%@ page import="com.onelogin.saml.*,com.onelogin.*" %>
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
 <html>
 <head>
-<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-<title>Auth Request</title>
-<%
-
-  // the appSettings object contain application specific settings used by the SAML library
-  AppSettings appSettings = new AppSettings();
-
-  // set the URL of the consume.jsp (or similar) file for this app. The SAML Response will be posted to this URL
-  appSettings.setAssertionConsumerServiceUrl("http://demopartner.example.junyo.com:8080/java-saml/consume.jsp");
-
-  // set the issuer of the authentication request. This would usually be the URL of the issuing web application
-  appSettings.setIssuer("http://demopartner.example.junyo.com/saml2");
-  
-  // the accSettings object contains settings specific to the users account. 
-  // At this point, your application must have identified the users origin
-  AccountSettings accSettings = new AccountSettings();
-
-  // The URL at the Identity Provider where to the authentication request should be sent
-  accSettings.setIdpSsoTargetUrl("https://idp.junyo.com/idp/saml2/idp/SSOService.php");
-  
-  // Generate an AuthRequest and send it to the identity provider
-  AuthRequest authReq = new AuthRequest(appSettings, accSettings);
-
-  String reqString = AuthRequest.getRidOfCRLF(URLEncoder.encode(authReq.getRequest(AuthRequest.base64), "UTF-8"));
-
-%>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>Auth Request</title>
+  <%
+    AuthRequest authReq = new AuthRequest("YOUR_SID", new Date());
+  %>
 </head>
 <body>
-SAMLRequest will = <%= URLDecoder.decode(reqString) %>
-<form method='POST' action="https://idp.junyo.com/idp/saml2/idp/SSOService.php">
-      <input type="hidden" name="SAMLRequest" value="<%= URLDecoder.decode(reqString) %>" />
-      <input type="submit" value="Try Posting It" />
-</form>
+	<h1>SAML V2 Auth test</h1>
+  <form method='GET' action="http://auth-int.orange.fr/sso">
+    <input type="hidden" name="SAMLRequest" value="<%= authReq.getRequest() %>" />
+    <input type="submit" value="Connect" />
+  </form>
+
+  <div>
+   <h2>SAML Auth request to be submitted</h2>
+   <code><%= StringEscapeUtils.escapeXml(new String(authReq.getRequestXML())) %></code>
+  </div>
+
 </body>
 </html>

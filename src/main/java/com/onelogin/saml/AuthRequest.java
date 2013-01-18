@@ -1,12 +1,14 @@
 package com.onelogin.saml;
 
 import java.io.ByteArrayOutputStream;
-import java.nio.charset.Charset;
-import java.text.SimpleDateFormat;
+import java.net.URLEncoder;
 import java.text.DateFormat;
-import java.util.TimeZone;
+import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.TimeZone;
 import java.util.UUID;
+import java.util.zip.Deflater;
+import java.util.zip.DeflaterOutputStream;
 
 import javax.xml.stream.XMLOutputFactory;
 import javax.xml.stream.XMLStreamException;
@@ -14,96 +16,78 @@ import javax.xml.stream.XMLStreamWriter;
 
 import org.apache.commons.codec.binary.Base64;
 
-import com.onelogin.AccountSettings;
 import com.onelogin.AppSettings;
 
 public class AuthRequest {
-	
-	private String id;
-	private String issueInstant;
-	private AppSettings appSettings;
-	public static final int base64 = 1;
-	
-	public AuthRequest(AppSettings appSettings, AccountSettings accountSettings){		
-		this.appSettings = appSettings;
-		id="_"+UUID.randomUUID().toString();
-		
-    DateFormat df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
-    df.setTimeZone(TimeZone.getTimeZone("UTC"));
-		issueInstant = df.format(new Date());
-	}
-	
-	public String getRequest(int format) throws XMLStreamException {
-		ByteArrayOutputStream baos = new ByteArrayOutputStream();		
-		XMLOutputFactory factory = XMLOutputFactory.newInstance();
-		XMLStreamWriter writer = factory.createXMLStreamWriter(baos);
-					
-		writer.writeStartElement("samlp", "AuthnRequest", "urn:oasis:names:tc:SAML:2.0:protocol");
-		writer.writeNamespace("samlp","urn:oasis:names:tc:SAML:2.0:protocol");
-		
-		writer.writeAttribute("ID", id);
-		writer.writeAttribute("Version", "2.0");
-		writer.writeAttribute("IssueInstant", this.issueInstant);
-		writer.writeAttribute("ProtocolBinding", "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST");
-		writer.writeAttribute("AssertionConsumerServiceURL", this.appSettings.getAssertionConsumerServiceUrl());
-		
-		writer.writeStartElement("saml","Issuer","urn:oasis:names:tc:SAML:2.0:assertion");
-		writer.writeNamespace("saml","urn:oasis:names:tc:SAML:2.0:assertion");
-		writer.writeCharacters(this.appSettings.getIssuer());
-		writer.writeEndElement();
-		
-		writer.writeStartElement("samlp", "NameIDPolicy", "urn:oasis:names:tc:SAML:2.0:protocol");
-		
-		// writer.writeAttribute("Format", "urn:oasis:names:tc:SAML:2.0:nameid-format:unspecified");
-		writer.writeAttribute("Format", "urn:oasis:names:tc:SAML:2.0:nameid-format:entity");
-		
-		writer.writeAttribute("AllowCreate", "true");
-		writer.writeEndElement();
-		
-		// writer.writeStartElement("samlp","RequestedAuthnContext","urn:oasis:names:tc:SAML:2.0:protocol");
-		
-		// writer.writeAttribute("Comparison", "exact");
-		// writer.writeEndElement();
-		
-		// writer.writeStartElement("saml","AuthnContextClassRef","urn:oasis:names:tc:SAML:2.0:assertion");
-		// writer.writeNamespace("saml", "urn:oasis:names:tc:SAML:2.0:assertion");
-		// writer.writeCharacters("urn:oasis:names:tc:SAML:2.0:ac:classes:PasswordProtectedTransport");
-		// writer.writeEndElement();
-		
-		writer.writeEndElement();
-		writer.flush();		
-		
-		if (format == base64) {
-			byte [] encoded = Base64.encodeBase64Chunked(baos.toByteArray());
-			String result = new String(encoded,Charset.forName("UTF-8"));
-						
-			return result;
-		}
-						
-		return null;
-	}
-	
- 	public static String getRidOfCRLF(String what) {
-		String lf = "%0D";
-		String cr = "%0A";
-		String now = lf;
+  private String id;
+  private Date date;
+  private String issuer;
 
-		int index = what.indexOf(now);
-		StringBuffer r = new StringBuffer();
+  private final static DateFormat dateFormat;
+  private static final String SAML_V2_NAMESPACE_PREFIX = "urn:oasis:names:tc:SAML:2.0:";
 
-		while (index!=-1) {
-			r.append(what.substring(0,index));
-			what = what.substring(index+3,what.length());
-			
-			if (now.equals(lf)) {
-				now = cr;
-			} else {
-				now = lf;
-			}
-			
-			index = what.indexOf(now);
-		}
-		return r.toString();
-	}		
+  static {
+    dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
+    dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
+  }
 
+  public AuthRequest(String issuer, Date date) {
+    this.issuer = issuer;
+    id = "_" + UUID.randomUUID().toString();
+    this.date = date;
+  }
+
+  public AuthRequest(AppSettings appSettings, Date date) {
+    this(appSettings.getIssuer(), date);
+  }
+
+  public byte[] getRequestXML() throws XMLStreamException {
+    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    XMLOutputFactory factory = XMLOutputFactory.newInstance();
+    XMLStreamWriter writer = factory.createXMLStreamWriter(baos);
+
+    writer.writeStartElement("", "AuthnRequest", SAML_V2_NAMESPACE_PREFIX + "protocol");
+    writer.writeNamespace("", SAML_V2_NAMESPACE_PREFIX + "protocol");
+
+    writer.writeAttribute("ID", id);
+    writer.writeAttribute("Version", "2.0");
+    writer.writeAttribute("IssueInstant", dateFormat.format(date));
+
+    writer.writeStartElement("", "Issuer", SAML_V2_NAMESPACE_PREFIX + "assertion");
+    writer.writeNamespace("", SAML_V2_NAMESPACE_PREFIX + "assertion");
+
+    writer.writeCharacters(issuer);
+    writer.writeEndElement();
+    writer.writeStartElement("", "NameIDPolicy", SAML_V2_NAMESPACE_PREFIX + "protocol");
+    writer.writeAttribute("Format", SAML_V2_NAMESPACE_PREFIX + "nameid-format:persistent");
+    writer.writeAttribute("AllowCreate", "true");
+    writer.writeEndElement();
+    writer.writeEndElement();
+    writer.flush();
+
+    return baos.toByteArray();
+  }
+
+  public String getRequest() throws XMLStreamException {
+    return encodeSAMLRequest(getRequestXML());
+  }
+
+  private String encodeSAMLRequest(byte[] pSAMLRequest) throws RuntimeException {
+
+    Base64 base64Encoder = new Base64();
+
+    try {
+      ByteArrayOutputStream byteArray = new ByteArrayOutputStream();
+      Deflater deflater = new Deflater(Deflater.DEFAULT_COMPRESSION, true);
+
+      DeflaterOutputStream def = new DeflaterOutputStream(byteArray, deflater);
+      def.write(pSAMLRequest);
+      def.close();
+      byteArray.close();
+
+      return URLEncoder.encode(new String(base64Encoder.encode(byteArray.toByteArray())), "UTF-8");
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
+  }
 }
