@@ -7,19 +7,25 @@
   <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
   <title>Auth Request</title>
   <%
-    AuthRequest authReq = new AuthRequest("YOUR_SID", new Date());
+    AuthRequest authReq = new AuthRequest("YOUR ISSUER", new Date());
+	String ssoUrl = "YOUR SSO URL";
   %>
 </head>
 <body>
 	<h1>SAML V2 Auth test</h1>
-  <form method='GET' action="http://auth-int.orange.fr/sso">
-    <input type="hidden" name="SAMLRequest" value="<%= authReq.getRequest() %>" />
+  <form method="GET" action="<%= ssoUrl %>">
+    <input type="hidden" name="SAMLRequest" value="<%=authReq.getRequest()%>" />
     <input type="submit" value="Connect" />
   </form>
+	<a href="<%= ssoUrl %>?SAMLRequest=<%=authReq.getRequest()%>" title="">Or click on this link.</a>
 
   <div>
    <h2>SAML Auth request to be submitted</h2>
    <code><%= StringEscapeUtils.escapeXml(new String(authReq.getRequestXML())) %></code>
+  </div>
+  <div>
+   <h2>Encoded SAML Auth request to be submitted</h2>
+   <code><%=authReq.getRequest()%></code>
   </div>
 
 </body>
